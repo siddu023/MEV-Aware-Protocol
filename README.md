@@ -1,66 +1,71 @@
-## Foundry
+# 🔐 MEV-Aware Protocol Suite
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+**Built by Sai Siddush Thungathurthy** — Smart Contract Engineer | DeFi Protocol Architect
 
-Foundry consists of:
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+This is a modular DeFi system designed  to **resist common MEV exploits** like sandwich attacks, backrun liquidations, and frontrun-based vault draining.
 
-## Documentation
+Inspired by MEV protection techniques from CoWSwap, Flashbots, and auction-based liquidations (Ajna/Euler).
 
-https://book.getfoundry.sh/
+---
 
-## Usage
+## ⚙️ Components
 
-### Build
+### `MEVProtectedRouter.sol`
+A swap router that defends against sandwich attacks by:
+- Enforcing `minOut` slippage checks
+- Requiring a cooldown period before swaps settle
+- Routing assets to a vault instead of direct to the user
 
-```shell
-$ forge build
-```
+### `TimeLockedVault.sol`
+A secure vault contract that:
+- Delays withdrawals via block-based cooldowns
+- Prevents predictable exit-based frontruns or LP griefing
 
-### Test
+### `BackrunLiquidator.sol`
+A liquidation execution controller that:
+- Marks eligible liquidations
+- Requires a delay before execution
+- Optional: extendable to auction-based execution
 
-```shell
-$ forge test
-```
+---
 
-### Format
+## 🛡️ Threat Model & Protections
 
-```shell
-$ forge fmt
-```
+| Attack Type         | Defense Mechanism                   | Location              |
+|---------------------|--------------------------------------|------------------------|
+| 🥪 Sandwich attack  | Cooldown + slippage + delayed settle| `MEVProtectedRouter`   |
+| 🏃 Frontrun exit     | Vault cooldown + withdrawal delay   | `TimeLockedVault`      |
+| 💣 Liquidation snipe| Delay between eligible + executable | `BackrunLiquidator`    |
+| 👁️ Mempool abuse    | Optional Flashbots/private execution| Extendable              |
 
-### Gas Snapshots
+---
 
-```shell
-$ forge snapshot
-```
+## 🔁 Flow Diagram
 
-### Anvil
+### Swap Flow
 
-```shell
-$ anvil
-```
+User → Router.requestSwap()
+→ Tokens escrowed
+→ Wait N blocks
+→ Anyone calls executeSwap()
+→ Tokens routed to vault
 
-### Deploy
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
+User deposits → Vault locks funds
+User waits LOCK_PERIOD
+User withdraws only after delay
 
-### Cast
+Check borrower health
+If unhealthy → markLiquidation()
+After cooldown → executeLiquidation()
 
-```shell
-$ cast <subcommand>
-```
 
-### Help
 
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+contracts/
+├── MEVProtectedRouter.sol     ← Anti-sandwich entry router
+├── TimeLockedVault.sol        ← Withdrawal cooldown vault
+├── BackrunLiquidator.sol      ← Delay-based liquidation engine
+├── Mocks/
+│   ├── MockToken.sol
+│   └── MockOracle.sol
