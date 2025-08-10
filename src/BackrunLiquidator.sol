@@ -46,7 +46,7 @@ interface IBorrower {
             require(win.marked, "Not Marked");
             require(block.number >= win.triggeredAt + COOLDOWN, " cooldown active");
 
-            IBorrower(borrower).liquidaate();
+            IBorrower(borrower).liquidate();
             delete pending[borrower];
         }
 
